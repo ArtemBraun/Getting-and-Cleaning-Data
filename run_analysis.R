@@ -1,138 +1,93 @@
-##############################################################################
-#
-# FILE
-#   run_analysis.R
-#
-# OVERVIEW
-#   Using data collected from the accelerometers from the Samsung Galaxy S 
-#   smartphone, work with the data and make a clean data set, outputting the
-#   resulting tidy data to a file named "tidy_data.txt".
-#   See README.md for details.
-#
+# launching "dplyr" package
 
 library(dplyr)
 
-
-##############################################################################
-# STEP 0A - Get data
-##############################################################################
-
-# download zip file containing data if it hasn't already been downloaded
-zipUrl <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
-zipFile <- "UCI HAR Dataset.zip"
-
-if (!file.exists(zipFile)) {
-  download.file(zipUrl, zipFile, mode = "wb")
+# downloading data file
+Url_data <- "https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip"
+File_data <- "UCI HAR Dataset.zip"
+if (!file.exists(File_data)) {
+  download.file(Url_data, File_data, mode = "wb")
 }
 
-# unzip zip file containing data if data directory doesn't already exist
-dataPath <- "UCI HAR Dataset"
-if (!file.exists(dataPath)) {
-  unzip(zipFile)
+# extracting zip file
+data_name <- "UCI HAR Dataset"
+if (!file.exists(data_name)) {
+  unzip(File_data)
 }
 
+# reading file with activity names
+activities <- read.table(file.path(data_name, "activity_labels.txt"))
+colnames(activities) <- c("activity_Number", "activity_Name")
 
-##############################################################################
-# STEP 0B - Read data
-##############################################################################
+# reading file with features
+features <- read.table(file.path(data_name, "features.txt"), as.is = TRUE)
 
-# read training data
-trainingSubjects <- read.table(file.path(dataPath, "train", "subject_train.txt"))
-trainingValues <- read.table(file.path(dataPath, "train", "X_train.txt"))
-trainingActivity <- read.table(file.path(dataPath, "train", "y_train.txt"))
+# reading files with training data
+Activities_train <- read.table(file.path(data_name, "train", "y_train.txt"))
+Values_train <- read.table(file.path(data_name, "train", "X_train.txt"))
+Subjects_train <- read.table(file.path(data_name, "train", "subject_train.txt"))
 
-# read test data
-testSubjects <- read.table(file.path(dataPath, "test", "subject_test.txt"))
-testValues <- read.table(file.path(dataPath, "test", "X_test.txt"))
-testActivity <- read.table(file.path(dataPath, "test", "y_test.txt"))
-
-# read features, don't convert text labels to factors
-features <- read.table(file.path(dataPath, "features.txt"), as.is = TRUE)
-  ## note: feature names (in features[, 2]) are not unique
-  ##       e.g. fBodyAcc-bandsEnergy()-1,8
-
-# read activity labels
-activities <- read.table(file.path(dataPath, "activity_labels.txt"))
-colnames(activities) <- c("activityId", "activityLabel")
+# reading files with test data
+Activities_test <- read.table(file.path(data_name, "test", "y_test.txt"))
+Values_test <- read.table(file.path(data_name, "test", "X_test.txt"))
+Subjects_test <- read.table(file.path(data_name, "test", "subject_test.txt"))
 
 
-##############################################################################
-# Step 1 - Merge the training and the test sets to create one data set
-##############################################################################
 
-# concatenate individual data tables to make single data table
-humanActivity <- rbind(
-  cbind(trainingSubjects, trainingValues, trainingActivity),
-  cbind(testSubjects, testValues, testActivity)
+# Taks 1 - Merge the training and the test sets to create one data set
+
+# merging into a single data table
+Merged_table <- rbind(cbind(Activities_train, Values_train, Subjects_train),
+  		       cbind(Activities_test, Values_test, Subjects_test)
 )
 
-# remove individual data tables to save memory
-rm(trainingSubjects, trainingValues, trainingActivity, 
-   testSubjects, testValues, testActivity)
-
-# assign column names
-colnames(humanActivity) <- c("subject", features[, 2], "activity")
+# naming columns
+colnames(Merged_table) <- c("subject", features[, 2], "activity")
 
 
-##############################################################################
-# Step 2 - Extract only the measurements on the mean and standard deviation
-#          for each measurement
-##############################################################################
+
+# Task 2 - Extract only the measurements on the mean and standard deviation for each measurement
 
 # determine columns of data set to keep based on column name...
-columnsToKeep <- grepl("subject|activity|mean|std", colnames(humanActivity))
 
-# ... and keep data in these columns only
-humanActivity <- humanActivity[, columnsToKeep]
-
-
-##############################################################################
-# Step 3 - Use descriptive activity names to name the activities in the data
-#          set
-##############################################################################
-
-# replace activity values with named factor levels
-humanActivity$activity <- factor(humanActivity$activity, 
-  levels = activities[, 1], labels = activities[, 2])
+Columns_with_mean_std <- grepl("subject|activity|mean|std", colnames(Merged_table))
+Merged_table <- Merged_table[, Columns_with_mean_std]
 
 
-##############################################################################
-# Step 4 - Appropriately label the data set with descriptive variable names
-##############################################################################
 
-# get column names
-humanActivityCols <- colnames(humanActivity)
+# Task 3 - Use descriptive activity names to name the activities in the data set
 
-# remove special characters
-humanActivityCols <- gsub("[\\(\\)-]", "", humanActivityCols)
-
-# expand abbreviations and clean up names
-humanActivityCols <- gsub("^f", "frequencyDomain", humanActivityCols)
-humanActivityCols <- gsub("^t", "timeDomain", humanActivityCols)
-humanActivityCols <- gsub("Acc", "Accelerometer", humanActivityCols)
-humanActivityCols <- gsub("Gyro", "Gyroscope", humanActivityCols)
-humanActivityCols <- gsub("Mag", "Magnitude", humanActivityCols)
-humanActivityCols <- gsub("Freq", "Frequency", humanActivityCols)
-humanActivityCols <- gsub("mean", "Mean", humanActivityCols)
-humanActivityCols <- gsub("std", "StandardDeviation", humanActivityCols)
-
-# correct typo
-humanActivityCols <- gsub("BodyBody", "Body", humanActivityCols)
-
-# use new labels as column names
-colnames(humanActivity) <- humanActivityCols
+Merged_table$activity <- factor(Merged_table$activity, levels = activities[, 1], labels = activities[, 2])
 
 
-##############################################################################
-# Step 5 - Create a second, independent tidy set with the average of each
-#          variable for each activity and each subject
-##############################################################################
+# Task 4 - Appropriately label the data set with descriptive variable names
 
-# group by subject and activity and summarise using mean
-humanActivityMeans <- humanActivity %>% 
-  group_by(subject, activity) %>%
-  summarise_each(funs(mean))
 
-# output to file "tidy_data.txt"
-write.table(humanActivityMeans, "tidy_data.txt", row.names = FALSE, 
-            quote = FALSE)
+# getting column names
+Merged_tableCols <- colnames(Merged_table)
+
+# tidying column names
+Merged_tableCols <- gsub("[\\(\\)-]", "", Merged_tableCols)
+Merged_tableCols <- gsub("^f", "frequencyDomain", Merged_tableCols)
+Merged_tableCols <- gsub("^t", "timeDomain", Merged_tableCols)
+Merged_tableCols <- gsub("Acc", "Accelerometer", Merged_tableCols)
+Merged_tableCols <- gsub("Gyro", "Gyroscope", Merged_tableCols)
+Merged_tableCols <- gsub("Mag", "Magnitude", Merged_tableCols)
+Merged_tableCols <- gsub("Freq", "Frequency", Merged_tableCols)
+Merged_tableCols <- gsub("mean", "Mean", Merged_tableCols)
+Merged_tableCols <- gsub("std", "StandardDeviation", Merged_tableCols)
+Merged_tableCols <- gsub("BodyBody", "Body", Merged_tableCols)
+
+# applying new labels to columns
+colnames(Merged_table) <- Merged_tableCols
+
+
+
+# Task 5 - From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject
+
+
+Merged_tableMeans <- Merged_table %>% 
+				  group_by(subject, activity) %>%
+							      summarise_each(funs(mean))
+
+write.table(Merged_tableMeans, "tidy_data.txt", row.names = FALSE, quote = FALSE)
