@@ -48,7 +48,6 @@ colnames(Merged_table) <- c("subject", features[, 2], "activity")
 
 # Task 2 - Extract only the measurements on the mean and standard deviation for each measurement
 
-# determine columns of data set to keep based on column name...
 
 Columns_with_mean_std <- grepl("subject|activity|mean|std", colnames(Merged_table))
 Merged_table <- Merged_table[, Columns_with_mean_std]
