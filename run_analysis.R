@@ -37,8 +37,8 @@ Subjects_test <- read.table(file.path(data_name, "test", "subject_test.txt"))
 # Taks 1 - Merge the training and the test sets to create one data set
 
 # merging into a single data table
-Merged_table <- rbind(cbind(Activities_train, Values_train, Subjects_train),
-  		       cbind(Activities_test, Values_test, Subjects_test)
+Merged_table <- rbind(cbind(Subjects_train, Values_train, Activities_train),
+  		       cbind(Subjects_test, Values_test, Activities_test)
 )
 
 # naming columns
